@@ -1,0 +1,23 @@
+[package]
+name = "eff"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+byteorder = "1.4.3"
+num_enum = "0.5.4"
+enumflags2 = "0.7.5"
+
+deku = "0.15"
+lzzzz = "1.0.4"
+
+thiserror = "1.0.30"
+
+bcdec-rust = { path = "../bcdec-rust" }
+
+bcndecode = "0.2.0"
+
+[dev-dependencies]
+image = "0.24.2"
