@@ -113,7 +113,6 @@ impl Edds {
                     );
                 }
             };
-            dbg!(index);
             index -= 1;
         }
 
