@@ -1,5 +1,5 @@
 [package]
-name = "cli"
+name = "eff-cli"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 clap = {version = "4.0.29", features = ["derive"]}
 image = "0.24.5"
+anyhow = "1.0.66"
 
 [dependencies.eff]
 path = "../lib"

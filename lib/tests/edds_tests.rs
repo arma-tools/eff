@@ -1,6 +1,7 @@
 use std::{fs::File, io::BufReader};
 
 use eff::edds::Edds;
+use serial_test::serial;
 
 const INPUT_PATH_PREFIX: &str = "./tests/test-data/edds_in/";
 #[allow(dead_code)]
@@ -20,6 +21,7 @@ fn export_mipmaps(edds: &Edds, filename: &str, color_type: image::ColorType) {
 }
 
 #[test]
+#[serial]
 fn edds_bc4_test() {
     let file = File::open(format!("{}prop_bc4.edds", INPUT_PATH_PREFIX)).unwrap();
     let edds = Edds::from(&mut BufReader::new(file)).unwrap();
@@ -28,6 +30,7 @@ fn edds_bc4_test() {
 }
 
 #[test]
+#[serial]
 fn edds_bc7_test() {
     let file = File::open(format!("{}car_bc7.edds", INPUT_PATH_PREFIX)).unwrap();
     let edds = Edds::from(&mut BufReader::new(file)).unwrap();
@@ -36,9 +39,19 @@ fn edds_bc7_test() {
 }
 
 #[test]
+#[serial]
 fn edds_rgba_test() {
     let file = File::open(format!("{}uaz_rgba.edds", INPUT_PATH_PREFIX)).unwrap();
     let edds = Edds::from(&mut BufReader::new(file)).unwrap();
 
     export_mipmaps(&edds, "uaz_rgba", image::ColorType::Rgba8);
+}
+
+#[test]
+#[serial]
+fn edds_non_dx10_header_test() {
+    let file = File::open(format!("{}optic.edds", INPUT_PATH_PREFIX)).unwrap();
+    let edds = Edds::from(&mut BufReader::new(file)).unwrap();
+
+    export_mipmaps(&edds, "optic", image::ColorType::Rgba8);
 }

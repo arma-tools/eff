@@ -1,10 +1,11 @@
 use std::{fs::File, io::BufReader, path::PathBuf};
 
+use anyhow::{anyhow, Context, Result};
 use clap::{Args, Parser, Subcommand};
 use eff::edds;
 
 #[derive(Debug, Parser)] // requires `derive` feature
-#[command(name = "eff-clli")]
+#[command(name = "eff-cli")]
 #[command(about = "eff CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
@@ -18,6 +19,7 @@ enum Commands {
 
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true)]
+#[command(about = "edds texture file commands", long_about = None)]
 struct Edds {
     #[command(subcommand)]
     command: EddsCommands,
@@ -25,9 +27,10 @@ struct Edds {
 
 #[derive(Debug, Subcommand)]
 enum EddsCommands {
-    //Compress(StashPush),
-    Decompress {
-        /// Output file (*.png)
+    //Compress(),
+    #[command(about = "Decode an edds texture file", long_about = None)]
+    Decode {
+        /// Output file (*.png/*.jpg etc.)
         #[clap(short = 'o', long = "output")]
         outfile: Option<PathBuf>,
 
@@ -37,24 +40,25 @@ enum EddsCommands {
     },
 }
 
-fn main() {
+fn main() -> Result<()> {
     let args = Cli::parse();
     match args.command {
         Commands::Edds(edds) => match edds.command {
-            EddsCommands::Decompress { outfile, infile } => decompress_edds(infile, outfile),
+            EddsCommands::Decode { outfile, infile } => decompress_edds(infile, outfile),
         },
     }
 }
 
-fn decompress_edds(input: PathBuf, output: Option<PathBuf>) {
+fn decompress_edds(input: PathBuf, output: Option<PathBuf>) -> Result<()> {
     if !input.exists() {
-        println!("Error: {} doesn't exit!", input.display());
+        return Err(anyhow!("{} doesn't exit.", &input.display()));
     }
 
-    let file = File::open(input.clone()).unwrap();
+    let file =
+        File::open(&input).with_context(|| format!("Failed to open '{}'.", input.display()))?;
     let mut reader = BufReader::new(file);
-    let edds = edds::Edds::from(&mut reader).unwrap();
-    let mm = edds.mipmaps.last().unwrap();
+    let edds = edds::Edds::from(&mut reader).with_context(|| "Failed to read the edds.")?;
+    let mm = edds.mipmaps.last().with_context(|| "No Mipmaps found.")?;
 
     let mut output = if let Some(out) = output {
         out
@@ -68,14 +72,19 @@ fn decompress_edds(input: PathBuf, output: Option<PathBuf>) {
         )
     };
 
-    output.set_extension("png");
+    if output.extension().is_none() {
+        output.set_extension("png");
+    }
 
     image::save_buffer(
-        output,
+        &output,
         &mm.data,
         mm.width as u32,
         mm.height as u32,
         image::ColorType::Rgba8,
     )
-    .unwrap();
+    .with_context(|| format!("Couldn't save the image to '{}'.", output.display()))?;
+
+    println!("Decoding successful.");
+    Ok(())
 }
