@@ -7,6 +7,7 @@ use deku::{
 };
 use deku::{DekuContainerWrite, DekuRead, DekuUpdate, DekuWrite};
 use enumflags2::{bitflags, BitFlags};
+use four_cc::FourCC;
 
 use crate::core::errors::EddsError;
 
@@ -66,7 +67,7 @@ pub struct DdsPixelFormat {
         writer = "DdsPixelFormat::write_flags(deku::output, &self.flags)"
     )]
     pub flags: BitFlags<DdsPixelformatFlags>,
-    pub four_cc: u32,
+    pub four_cc: FourCCEnum,
     pub rgb_bit_count: u32,
     pub r_bit_mask: u32,
     pub g_bit_mask: u32,
@@ -309,7 +310,7 @@ pub struct DdsHeader {
     //     cond = "ddspf.flags.contains(DdsPixelformatFlags::DDPF_FOURCC) && ddspf.four_cc == 808540228"
     // )]
     #[deku(skip)]
-    pub dx10_header: Option<DdsHeaderDXT10>,
+    pub dx10_header: Option<DdsHeaderDX10>,
 }
 
 impl DdsHeader {
@@ -326,12 +327,12 @@ impl DdsHeader {
             .ddspf
             .flags
             .contains(DdsPixelformatFlags::DDPF_FOURCC)
-            && header.ddspf.four_cc == 808540228
+            && header.ddspf.four_cc == FourCCEnum::DX10
         {
             let mut buf = [0; 20];
             let read = reader.read(&mut buf)?;
             assert_eq!(read, 20);
-            let (_, dx10_header) = DdsHeaderDXT10::from_bytes((&buf, 0))?;
+            let (_, dx10_header) = DdsHeaderDX10::from_bytes((&buf, 0))?;
 
             header.dx10_header = Some(dx10_header);
         }
@@ -417,8 +418,36 @@ impl DdsHeader {
     }
 }
 
+#[repr(u32)]
 #[derive(Debug, PartialEq, Eq, DekuRead, DekuWrite)]
-pub struct DdsHeaderDXT10 {
+#[deku(type = "u32", bytes = "4")]
+pub enum FourCCEnum {
+    None = 0,
+    DXT1 = four_cc_to_u32(FourCC(*b"DXT1")),
+    DXT2 = four_cc_to_u32(FourCC(*b"DXT2")),
+    DXT3 = four_cc_to_u32(FourCC(*b"DXT3")),
+    DXT4 = four_cc_to_u32(FourCC(*b"DXT4")),
+    DXT5 = four_cc_to_u32(FourCC(*b"DXT5")),
+    DX10 = four_cc_to_u32(FourCC(*b"DX10")),
+    ATT1 = four_cc_to_u32(FourCC(*b"ATT1")),
+    ATT2 = four_cc_to_u32(FourCC(*b"ATT2")),
+    BC4U = four_cc_to_u32(FourCC(*b"BC4U")),
+    BC4S = four_cc_to_u32(FourCC(*b"BC4S")),
+    BC5U = four_cc_to_u32(FourCC(*b"BC5U")),
+    BC5S = four_cc_to_u32(FourCC(*b"BC5S")),
+    RGBG = four_cc_to_u32(FourCC(*b"RGBG")),
+    GRGB = four_cc_to_u32(FourCC(*b"GRGB")),
+}
+
+const fn four_cc_to_u32(four_cc: FourCC) -> u32 {
+    (four_cc.0[0] as u32)
+        + ((four_cc.0[1] as u32) << 8)
+        + ((four_cc.0[2] as u32) << 16)
+        + ((four_cc.0[3] as u32) << 24)
+}
+
+#[derive(Debug, PartialEq, Eq, DekuRead, DekuWrite)]
+pub struct DdsHeaderDX10 {
     pub dxgi_format: DxgiFormat,
     pub resource_dimension: D3D10_Resource_Dimension,
     pub misc_flag: u32,
@@ -426,7 +455,7 @@ pub struct DdsHeaderDXT10 {
     pub misc_flags2: u32,
 }
 
-impl Default for DdsHeaderDXT10 {
+impl Default for DdsHeaderDX10 {
     fn default() -> Self {
         Self {
             dxgi_format: DxgiFormat::DXGI_FORMAT_UNKNOWN,

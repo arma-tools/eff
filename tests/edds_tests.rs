@@ -55,3 +55,34 @@ fn edds_non_dx10_header_test() {
 
     export_mipmaps(&edds, "optic", image::ColorType::Rgba8);
 }
+
+#[test]
+#[serial]
+fn eden_1337_layer_test() {
+    let file = File::open(format!("{}Eden_1337_layer.edds", INPUT_PATH_PREFIX)).unwrap();
+    let edds = Edds::from(&mut BufReader::new(file)).unwrap();
+
+    export_mipmaps(&edds, "Eden_1337_layer_test", image::ColorType::Rgba8);
+}
+
+#[test]
+#[serial]
+fn eden_1337_normal_test() {
+    let file = File::open(format!("{}Eden_1337_normal.edds", INPUT_PATH_PREFIX)).unwrap();
+    let edds = Edds::from(&mut BufReader::new(file)).unwrap();
+
+    export_mipmaps(&edds, "Eden_1337_normal_test", image::ColorType::Rgba8);
+}
+
+#[test]
+#[serial]
+fn eden_1337_supertexture_test() {
+    let file = File::open(format!("{}Eden_1337_supertexture.edds", INPUT_PATH_PREFIX)).unwrap();
+    let edds = Edds::from(&mut BufReader::new(file)).unwrap();
+
+    export_mipmaps(
+        &edds,
+        "Eden_1337_supertexture_test",
+        image::ColorType::Rgba8,
+    );
+}

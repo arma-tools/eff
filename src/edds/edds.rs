@@ -4,7 +4,7 @@ use crate::core::{errors::EddsError, read::ReadExtTrait};
 
 use super::{
     dds_header::{DdsHeader, DxgiFormat},
-    DdsPixelFormatEnum,
+    DdsPixelFormatEnum, FourCCEnum,
 };
 
 use lzzzz::lz4;
@@ -114,49 +114,83 @@ impl Edds {
         header: &DdsHeader,
     ) -> Result<Vec<u8>, EddsError> {
         match &header.dx10_header {
-            Some(dx10_header) => match dx10_header.dxgi_format {
-                DxgiFormat::DXGI_FORMAT_BC4_UNORM => Ok(bcndecode::decode(
-                    src,
-                    width,
-                    height,
-                    bcndecode::BcnEncoding::Bc4,
-                    bcndecode::BcnDecoderFormat::LUM,
-                )?),
-                DxgiFormat::DXGI_FORMAT_B8G8R8X8_UNORM_SRGB => {
-                    let mut src = src.to_vec();
-                    for i in (0..src.len()).step_by(4) {
-                        let r = src[i];
-                        let b = src[i + 2];
-
-                        src[i] = b;
-                        src[i + 2] = r;
-                    }
-                    Ok(src)
-                }
-                DxgiFormat::DXGI_FORMAT_BC7_UNORM_SRGB => {
-                    let mut dst = vec![0_u8; width * height * 4];
-                    bcdec_rust::bcdec_bc7_unorm_safer(src, width, height, &mut dst);
-                    Ok(dst)
-                }
-                _ => Err(EddsError::UnknownImageDataFormat(format!(
-                    "{:?}",
-                    dx10_header.dxgi_format
-                ))),
-            },
-            None => match header.get_pixel_format() {
-                DdsPixelFormatEnum::D3DFMT_X8R8G8B8 => {
-                    let mut src = src.to_vec();
-                    for i in (0..src.len()).step_by(4) {
-                        let r = src[i];
-                        let b = src[i + 2];
-
-                        src[i] = b;
-                        src[i + 2] = r;
-                    }
-                    Ok(src)
-                }
-                unk => Err(EddsError::UnknownImageDataFormat(format!("{:?}", unk))),
-            },
+            Some(dx10_header) => decode_dx10_data(dx10_header, src, width, height),
+            None => decode_four_cc_data(header, src, width, height),
         }
+    }
+}
+
+fn decode_four_cc_data(
+    header: &DdsHeader,
+    src: &[u8],
+    width: usize,
+    height: usize,
+) -> Result<Vec<u8>, EddsError> {
+    match &header.ddspf.four_cc {
+        FourCCEnum::None => decode_pixel_format_data(header, src),
+        FourCCEnum::DXT5 => {
+            let bc5 = texpresso::Format::Bc5;
+            let mut output = vec![0; width * height * 4];
+            bc5.decompress(src, width, height, &mut output);
+            Ok(output)
+        }
+        ni_four_cc => Err(EddsError::UnknownImageDataFormat(format!(
+            "{:?}",
+            ni_four_cc
+        ))),
+    }
+}
+
+fn decode_pixel_format_data(header: &DdsHeader, src: &[u8]) -> Result<Vec<u8>, EddsError> {
+    match header.get_pixel_format() {
+        DdsPixelFormatEnum::D3DFMT_X8R8G8B8 | DdsPixelFormatEnum::D3DFMT_A8R8G8B8 => {
+            let mut src = src.to_vec();
+            for i in (0..src.len()).step_by(4) {
+                let r = src[i];
+                let b = src[i + 2];
+
+                src[i] = b;
+                src[i + 2] = r;
+            }
+            Ok(src)
+        }
+        unk => Err(EddsError::UnknownImageDataFormat(format!("{:?}", unk))),
+    }
+}
+
+fn decode_dx10_data(
+    dx10_header: &super::DdsHeaderDX10,
+    src: &[u8],
+    width: usize,
+    height: usize,
+) -> Result<Vec<u8>, EddsError> {
+    match dx10_header.dxgi_format {
+        DxgiFormat::DXGI_FORMAT_BC4_UNORM => Ok(bcndecode::decode(
+            src,
+            width,
+            height,
+            bcndecode::BcnEncoding::Bc4,
+            bcndecode::BcnDecoderFormat::LUM,
+        )?),
+        DxgiFormat::DXGI_FORMAT_B8G8R8X8_UNORM_SRGB => {
+            let mut src = src.to_vec();
+            for i in (0..src.len()).step_by(4) {
+                let r = src[i];
+                let b = src[i + 2];
+
+                src[i] = b;
+                src[i + 2] = r;
+            }
+            Ok(src)
+        }
+        DxgiFormat::DXGI_FORMAT_BC7_UNORM_SRGB => {
+            let mut dst = vec![0_u8; width * height * 4];
+            bcdec_rust::bcdec_bc7_unorm_safer(src, width, height, &mut dst);
+            Ok(dst)
+        }
+        _ => Err(EddsError::UnknownImageDataFormat(format!(
+            "{:?}",
+            dx10_header.dxgi_format
+        ))),
     }
 }
