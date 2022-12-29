@@ -1,7 +1,7 @@
 /target
 /Cargo.lock
 
-lib/tests/test-data/edds_out/*
+tests/test-data/edds_out/*
 
 
 !**/.gitkeep
